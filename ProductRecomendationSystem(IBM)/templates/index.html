@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ecommerce Recommendation System</title>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+
+<style>
+    /* Custom CSS for general body styling */
+    body {
+           background-color: #f8f9fa; /* Light background color */
+       }
+       /* Styling for the navigation bar */
+       .navbar {
+           box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+       }
+       /* Margin for the main content container */
+       .container {
+           margin-top: 50px;
+       }
+       /* Styling for the video background */
+       .video-background {
+           width: 100%;
+           height: 400px; /* Fixed height for the video section */
+           object-fit: cover; /* Ensures video covers the area without distortion */
+       }
+       /* Hover effect for navigation links */
+       .nav-link:hover {
+           color: orange !important; /* Changes text color to orange on hover */
+       }
+       /* Styling for navigation links that are also buttons */
+       .nav-link.btn {
+           border-radius: 5px; /* Rounded corners for button-like links */
+       }
+
+       /* Styling for modal content (signup/signin/product modals) */
+       .modal-content {
+           background-color: #fff; /* Default white background */
+           color: #000; /* Default black text color */
+       }
+       /* Dark theme specific styling for modal content */
+       .modal-content.dark {
+           background-color: #000; /* Black background for dark theme */
+           color: #fff; /* White text color for dark theme */
+       }
+
+       /* CSS to hide products initially */
+       .product-card-hidden {
+           display: none;
+       }
+</style>
+
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+
+    <!-- Logo and Brand -->
+    <a class="navbar-brand d-flex align-items-center" href="/">
+      <img src="static/hellooobuy.png" width="40" height="40" class="d-inline-block align-top me-2" alt="Logo">
+      <strong>Ecommerce Recommendation System</strong>
+    </a>
+
+    <!-- Toggler Button -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Collapsible Navbar Content -->
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav align-items-center">
+
+        <!-- Home -->
+        <li class="nav-item">
+          <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+        </li>
+
+        <!-- Settings -->
+       <li class="nav-item">
+          <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal">
+           <i class="fas fa-cog"></i> Settings
+          </a>
+       </li>
+
+        <!-- Cart -->
+        <li class="nav-item">
+          <a class="nav-link" href="/cart"><i class="fas fa-shopping-cart"></i> Cart</a>
+        </li>
+
+        {% if session.username %}
+        <li class="nav-item d-flex align-items-center">
+          <a href="/profile" class="nav-link d-flex align-items-center">
+            <img src="{{ url_for('static', filename='uploads/' + (session.get('profile_image') or 'default_profile.png')) }}"
+     alt="Profile" class="rounded-circle" width="35" height="35" style="object-fit: cover; margin-right: 8px;">
+
+            <span>{{ session.username }}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="btn btn-outline-danger nav-link" href="{{ url_for('logout') }}">Logout</a>
+        </li>
+        {% else %}
+        <!-- Sign Up -->
+        <li class="nav-item">
+          <a class="btn btn-outline-primary me-2 nav-link" href="#" data-bs-toggle="modal" data-bs-target="#signupModal">Sign Up</a>
+        </li>
+        <!-- Sign In -->
+        <li class="nav-item">
+          <a class="btn btn-primary nav-link" href="#" data-bs-toggle="modal" data-bs-target="#signinModal">Sign In</a>
+        </li>
+        {% endif %}
+
+      </ul>
+    </div>
+
+  </div>
+</nav>
+
+
+
+<!-- Video Background Carousel -->
+<div id="carouselExampleControls" class="carousel slide" data-ride="carousel">
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <!-- Autoplay, loop, and muted video for background effect -->
+        <video class="video-background" autoplay loop muted>
+          <source src="static/v.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+</div>
+
+<!-- Go To Main Page Button -->
+<div class="text-center mt-5">
+    <a href="main" class="btn btn-primary btn-lg">Go to Main Page</a>
+</div>
+
+<!-- Display signup message if available from Flask backend -->
+{% if signup_message %}
+<h5 style="margin-left:42%;margin-top:10px; text:bold;">{{signup_message}}</h5>
+{% endif %}
+
+<!-- Trending Recommendations Section -->
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Trending Products</h2>
+  <div class="row mt-4" id="trendingProductsContainer">
+    <!-- Loop through trending products passed from Flask -->
+    {% for index, product in trending_products.iterrows() %}
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-4 {% if index >= 8 %}product-card-hidden{% endif %}">
+      <div class="card">
+          <!-- Product Image: Use random_product_image_urls[index] for the image source -->
+          <img src="{{ random_product_image_urls[index] }}" class="card-img-top" alt="{{ product[trending_display_name_col] }}" style="height: 200px;">
+        <div class="card-body">
+          <!-- Product Name (truncated): Use trending_display_name_col for the product name -->
+          <h5 class="card-title">{{ truncate(product[trending_display_name_col],12) }}</h5>
+          <!-- Product Brand -->
+          <p class="card-text">Brand: {{ product['Brand'] }}</p>
+          <!-- Buy Now button that opens a modal -->
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal{{ index }}">Buy Now</button>
+
+        </div>
+      </div>
+    </div>
+    <!-- Modal for each Product (displayed when "Buy Now" is clicked) -->
+    <div class="modal fade" id="productModal{{ index }}" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <!-- Modal Title: Use trending_display_name_col for the product name -->
+            <h5 class="modal-title" id="productModalLabel">{{ product[trending_display_name_col] }}</h5>
+            
+               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-4">
+                  <!-- Modal Image: Use random_product_image_urls[index] for the image source -->
+                  <img src="{{ random_product_image_urls[index] }}" class="img-fluid" alt="{{ product[trending_display_name_col] }}" style="height: 200px;">
+              </div>
+              <div class="col-md-8">
+                <p><strong>Brand:</strong> {{ product['Brand'] }}</p>
+                <!-- Other product details -->
+                <p><strong>Review Count:</strong> {{ product['ReviewCount'] if 'ReviewCount' in product else 'N/A' }}</p>
+                <p><strong>Rating:</strong> {{ product['Rating'] if 'Rating' in product else 'N/A' }}</p>
+                <p><strong>Price:</strong> ${{ random_price }}</p> <!-- Displaying a random price -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+            <button type="button" class="btn btn-primary">Add to Cart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <!-- Load More Button -->
+
+
+
+
+<!-- Bootstrap modal for Sign Up -->
+<div class="modal fade" id="signupModal" tabindex="-1" aria-labelledby="signupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="signupModalLabel">Sign Up</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        </div>
+        <div class="modal-body">
+          <form action="/signup" method="post">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap modal for Sign In -->
+  <div class="modal fade" id="signinModal" tabindex="-1" aria-labelledby="signinModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="signinModalLabel">Sign In</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        </div>
+        <div class="modal-body">
+          <form action="/signin" method="post">
+            <div class="mb-3">
+              <label for="signinUsername" class="form-label">Username</label>
+              <input type="text" class="form-control" id="signinUsername" name="signinUsername" required>
+            </div>
+            <div class="mb-3">
+              <label for="signinPassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="signinPassword" name="signinPassword" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+    
+      <!-- Header with close button -->
+      <div class="modal-header">
+        <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <h5>Choose Theme:</h5>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="theme" id="defaultTheme" value="default" checked>
+          <label class="form-check-label" for="defaultTheme">Default</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="theme" id="blackTheme" value="black">
+          <label class="form-check-label" for="blackTheme">Black Theme</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="theme" id="greenTheme" value="green">
+          <label class="form-check-label" for="greenTheme">Green Theme</label>
+        </div>
+
+        <hr>
+
+        <h5>Zoom:</h5>
+        <button type="button" class="btn btn-primary me-2" id="zoomIn">Zoom In</button>
+        <button type="button" class="btn btn-primary" id="zoomOut">Zoom Out</button>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="applyTheme">Apply</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+  <!-- Bootstrap JS, Popper.js, and jQuery (required for Bootstrap's JavaScript components) -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Reusable function to apply the theme
+    function applyTheme(theme) {
+      if (theme === 'black') {
+        document.body.style.backgroundColor = 'black';
+        document.body.style.color = 'white';
+      } else if (theme === 'green') {
+        document.body.style.backgroundColor = 'green';
+        document.body.style.color = 'white';
+      } else {
+        document.body.style.backgroundColor = '#f8f9fa';
+        document.body.style.color = 'black';
+      }
+  
+      // Update modal background
+      const modals = document.querySelectorAll('.modal-content');
+      modals.forEach(modal => {
+        if (theme === 'black' || theme === 'green') {
+          modal.classList.add('dark');
+        } else {
+          modal.classList.remove('dark');
+        }
+      });
+  
+      // Select correct radio button
+      const radio = document.querySelector(`input[name="theme"][value="${theme}"]`);
+      if (radio) radio.checked = true;
+    }
+  
+    // Reusable function to apply zoom level
+    function applyZoom(zoomLevel) {
+      document.body.style.zoom = zoomLevel;
+    }
+  
+    document.addEventListener('DOMContentLoaded', function () {
+      // Load and apply saved theme
+      const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+      applyTheme(savedTheme);
+  
+      // Load and apply saved zoom
+      const savedZoom = localStorage.getItem('zoomLevel') || '100%';
+      applyZoom(savedZoom);
+    });
+  
+    // Apply button logic
+    document.getElementById('applyTheme').addEventListener('click', function () {
+      const selectedTheme = document.querySelector('input[name="theme"]:checked').value;
+      localStorage.setItem('selectedTheme', selectedTheme);
+      applyTheme(selectedTheme);
+      $('#settingsModal').modal('hide');
+    });
+  
+    // Zoom In
+    document.getElementById('zoomIn').addEventListener('click', function () {
+      const newZoom = '115%';
+      localStorage.setItem('zoomLevel', newZoom);
+      applyZoom(newZoom);
+    });
+  
+    // Zoom Out
+    document.getElementById('zoomOut').addEventListener('click', function () {
+      const newZoom = '100%';
+      localStorage.setItem('zoomLevel', newZoom);
+      applyZoom(newZoom);
+    });
+  
+    // Show settings modal
+    document.getElementById('settingsLink').addEventListener('click', function () {
+      $('#settingsModal').modal('show');
+    });
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const loadMoreBtn = document.getElementById("loadMoreBtn");
+      const hiddenCards = document.querySelectorAll(".product-card-hidden");
+  
+      let visibleCount = 8;
+      const increment = 8;
+  
+      loadMoreBtn.addEventListener("click", function () {
+        let nextVisible = 0;
+        for (let i = visibleCount; i < hiddenCards.length && nextVisible < increment; i++) {
+          hiddenCards[i].style.display = "block";
+          hiddenCards[i].classList.remove("product-card-hidden");
+          nextVisible++;
+        }
+  
+        visibleCount += nextVisible;
+  
+        // Hide the button if all products are shown
+        if (visibleCount >= hiddenCards.length) {
+          loadMoreBtn.style.display = "none";
+        }
+      });
+    });
+  </script>
+  
+<!-- Footer -->
+<footer class="footer bg-dark text-white">
+  <div class="container" style="padding-top: 20px;">
+    <div class="row">
+      <!-- About Section -->
+      <div class="col-md-3 col-sm-6">
+        <h5>About Us</h5>
+        <p>helloooobuy helps you discover the best products based on your interests and preferences.</p>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="col-md-3 col-sm-6">
+        <h5>Quick Links</h5>
+        <ul class="list-unstyled">
+          <li><a href="/" class="text-white">Home</a></li>
+          <li><a href="/info#about" class="text-white">About</a></li>
+          <li><a href="/info#services" class="text-white">Services</a></li>
+          <li><a href="/info#contact" class="text-white">Contact</a></li>
+        </ul>
+      </div>
+
+      <!-- Support Links -->
+      <div class="col-md-3 col-sm-6">
+        <h5>Support</h5>
+        <ul class="list-unstyled">
+          <li><a href="/info#faq" class="text-white">FAQ</a></li>
+          <li><a href="/info#terms" class="text-white">Terms of Service</a></li>
+          <li><a href="/info#privacy" class="text-white">Privacy Policy</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="col-md-3 col-sm-6">
+        <h5>Contact Us</h5>
+        <address>
+          <strong>helloooobuy</strong><br>
+          Dehradun, Uttarakhand 248007<br>
+          India<br>
+          Phone: +94 8449889893<br>
+          Email: Devashish.124743@stu.upes.ac.in.com
+        </address>
+      </div>
+    </div>
+
+    <!-- Footer Bottom -->
+    <div class="row mt-3">
+      <div class="col-md-12">
+        <hr class="bg-light">
+        <p class="text-center mb-0">© 2025 Ecommerce Recommendation System. All Rights Reserved.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+</body>
+</html>
