@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <style>
+    .profile-card {
+      background: #ffffff;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .profile-image {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 4px solid #007bff;
+    }
+    .profile-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .profile-header h4 {
+      margin-top: 15px;
+    }
+    .profile-actions a {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+
+<body class="bg-light py-5">
+
+  <div class="container">
+    <div class="profile-card mx-auto" style="max-width: 600px;">
+      <div class="profile-header">
+        <img src="{{ url_for('static', filename='uploads/' + user.profile_image) }}"
+             alt="Profile Picture" class="profile-image">
+        <h4>{{ user.full_name or user.username }}</h4>
+        <p class="text-muted mb-0">{{ user.email }}</p>
+      </div>
+
+      <hr>
+
+      <div>
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        {% if user.phone %}
+          <p><strong>Phone:</strong> {{ user.phone }}</p>
+        {% endif %}
+        {% if user.address %}
+          <p><strong>Address:</strong> {{ user.address }}</p>
+        {% endif %}
+        <p><strong>Joined:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+      </div>
+
+      <hr>
+
+      <div class="profile-actions text-center">
+        <a href="/edit_profile" class="btn btn-outline-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
+        <a href="/change_password" class="btn btn-outline-warning"><i class="fas fa-key"></i> Change Password</a>
+        <a href="/" class="btn btn-secondary"><i class="fas fa-home"></i> Home</a>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
